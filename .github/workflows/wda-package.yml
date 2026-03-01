@@ -13,13 +13,12 @@ jobs:
 
     - name: Build WebDriverAgent
       run: |
-        # スクリプトが存在する場合のみ実行
+        # 依存関係の解決を試みる
         if [ -f "./Scripts/bootstrap.sh" ]; then
           ./Scripts/bootstrap.sh || true
         fi
         
-        # 署名なし(CODE_SIGNING_ALLOWED=NO)でビルドを強制完遂
-        # これによりWindowsユーザーでもエラー70を回避してIPAを作成可能
+        # 署名なしでビルドを強行
         xcodebuild -project WebDriverAgent.xcodeproj \
                    -scheme WebDriverAgentRunner \
                    -destination 'generic/platform=iOS' \
@@ -34,17 +33,19 @@ jobs:
 
     - name: Package IPA
       run: |
-        # Payloadフォルダを作成し、中身（Frameworks含む）を丸ごとコピー
+        # Payloadフォルダの作成と中身のコピー
         mkdir -p Payload
         cp -R build/Build/Products/Release-iphoneos/WebDriverAgentRunner-Runner.app Payload/
         
-        # 不要な署名データを削除（TrollStore/Sideloadlyでの新規署名をスムーズにするため）
+        # 不要な署名キャッシュを削除
         rm -rf Payload/WebDriverAgentRunner-Runner.app/_CodeSignature
         
-        # IPAとしてパッケージング
+        # IPAを作成
         zip -r WebDriverAgentRunner.ipa Payload/
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: WebDriverAgent-Fixed
+        name: WebDriverAgent-Fixed-IPA
+        path: WebDriverAgentRunner.ipa
+        if-no-files-found: error
