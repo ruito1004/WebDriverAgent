@@ -1,7 +1,7 @@
 name: WebDriverAgent Package
 
 on:
-  workflow_dispatch: # これを追加することで、手動ボタンが出現します
+  workflow_dispatch:
 
 jobs:
   build:
@@ -9,18 +9,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build WDA
+      - name: Build WDA Runner
         run: |
           xcodebuild build-for-testing \
             -project WebDriverAgent.xcodeproj \
             -scheme WebDriverAgentRunner \
             -destination 'generic/platform=iOS' \
-            -derivedDataPath build
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            COMPILER_INDEX_STORE_ENABLE=NO
 
       - name: Create IPA
         run: |
-          mkdir Payload
-          cp -r build/Build/Products/Debug-iphoneos/WebDriverAgentRunner-Runner.app Payload/
+          mkdir -p Payload
+          find build -name "WebDriverAgentRunner-Runner.app" -exec cp -r {} Payload/ \;
           zip -r WebDriverAgentRunner.ipa Payload
 
       - name: Upload IPA
