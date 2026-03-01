@@ -4,7 +4,7 @@ on: [push, workflow_dispatch]
 
 jobs:
   build:
-    runs-on: macos-latest  # 本物のMac環境でビルドする
+    runs-on: macos-latest  # iOSアプリのビルドにはMac環境が必須です
     steps:
     - uses: actions/checkout@v4
     
@@ -13,11 +13,13 @@ jobs:
 
     - name: Build WebDriverAgent
       run: |
-        # 依存関係を解決
-        ./Scripts/bootstrap.sh
+        # 以前のバージョンで必要だったスクリプトの存在を確認
+        if [ -f "./Scripts/bootstrap.sh" ]; then
+          ./Scripts/bootstrap.sh
+        fi
         
-        # 実機（Generic iOS Device）向けにビルドを実行
-        # これにより 129KB ではなく数MBのバイナリが生成されます
+        # 実機用(generic/platform=iOS)にビルドを実行
+        # これにより本物のバイナリが生成されます
         xcodebuild -project WebDriverAgent.xcodeproj \
                    -scheme WebDriverAgentRunner \
                    -destination 'generic/platform=iOS' \
@@ -27,7 +29,7 @@ jobs:
 
     - name: Package IPA
       run: |
-        # TrollStoreやSideloadlyで認識できるIPA形式にまとめる
+        # インストール可能な形式(IPA)にパッケージングします
         mkdir -p Payload
         cp -r build/Build/Products/Release-iphoneos/WebDriverAgentRunner-Runner.app Payload/
         zip -r WebDriverAgentRunner.ipa Payload/
@@ -35,5 +37,5 @@ jobs:
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: WebDriverAgent-Fixed-IPA  # ここからダウンロード可能になります
+        name: WebDriverAgent-Fixed-IPA
         path: WebDriverAgentRunner.ipa
