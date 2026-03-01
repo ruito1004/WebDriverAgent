@@ -13,34 +13,29 @@ jobs:
 
     - name: Build WebDriverAgent
       run: |
-        # 依存関係の解決を試みる
         if [ -f "./Scripts/bootstrap.sh" ]; then
           ./Scripts/bootstrap.sh || true
         fi
         
-        # 署名なしでビルドを強行
+        # CODE_SIGN_IDENTITY="-" を使うことで、Ad-hoc署名（自分用署名）を強制付与します
         xcodebuild -project WebDriverAgent.xcodeproj \
                    -scheme WebDriverAgentRunner \
                    -destination 'generic/platform=iOS' \
                    -configuration Release \
                    -derivedDataPath build \
-                   CODE_SIGNING_ALLOWED=NO \
-                   CODE_SIGNING_REQUIRED=NO \
-                   CODE_SIGN_IDENTITY="" \
-                   CODE_SIGN_ENTITLEMENTS="" \
+                   CODE_SIGNING_ALLOWED=YES \
+                   CODE_SIGNING_REQUIRED=YES \
+                   CODE_SIGN_IDENTITY="-" \
+                   PROVISIONING_PROFILE_SPECIFIER="" \
+                   AD_HOC_CODE_SIGNING_ALLOWED=YES \
                    COMPILER_INDEX_STORE_ENABLE=NO \
                    build-for-testing
 
     - name: Package IPA
       run: |
-        # Payloadフォルダの作成と中身のコピー
         mkdir -p Payload
         cp -R build/Build/Products/Release-iphoneos/WebDriverAgentRunner-Runner.app Payload/
-        
-        # 不要な署名キャッシュを削除
-        rm -rf Payload/WebDriverAgentRunner-Runner.app/_CodeSignature
-        
-        # IPAを作成
+        # ここでは _CodeSignature を消さずに残します（Ad-hoc署名を維持するため）
         zip -r WebDriverAgentRunner.ipa Payload/
 
     - name: Upload Artifact
