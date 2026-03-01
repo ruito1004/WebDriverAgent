@@ -1,32 +1,39 @@
-name: WebDriverAgent Package
+name: Build Real IPA
 
-on:
-  workflow_dispatch:
+on: [push, workflow_dispatch]
 
 jobs:
   build:
-    runs-on: macos-latest
+    runs-on: macos-latest  # 本物のMac環境でビルドする
     steps:
-      - uses: actions/checkout@v4
+    - uses: actions/checkout@v4
+    
+    - name: Set up Xcode
+      run: sudo xcode-select -s /Applications/Xcode.app
 
-      - name: Build WDA Runner
-        run: |
-          xcodebuild build-for-testing \
-            -project WebDriverAgent.xcodeproj \
-            -scheme WebDriverAgentRunner \
-            -destination 'generic/platform=iOS' \
-            -derivedDataPath build \
-            CODE_SIGNING_ALLOWED=NO \
-            COMPILER_INDEX_STORE_ENABLE=NO
+    - name: Build WebDriverAgent
+      run: |
+        # 依存関係を解決
+        ./Scripts/bootstrap.sh
+        
+        # 実機（Generic iOS Device）向けにビルドを実行
+        # これにより 129KB ではなく数MBのバイナリが生成されます
+        xcodebuild -project WebDriverAgent.xcodeproj \
+                   -scheme WebDriverAgentRunner \
+                   -destination 'generic/platform=iOS' \
+                   -configuration Release \
+                   -derivedDataPath build \
+                   build-for-testing
 
-      - name: Create IPA
-        run: |
-          mkdir -p Payload
-          find build -name "WebDriverAgentRunner-Runner.app" -exec cp -r {} Payload/ \;
-          zip -r WebDriverAgentRunner.ipa Payload
+    - name: Package IPA
+      run: |
+        # TrollStoreやSideloadlyで認識できるIPA形式にまとめる
+        mkdir -p Payload
+        cp -r build/Build/Products/Release-iphoneos/WebDriverAgentRunner-Runner.app Payload/
+        zip -r WebDriverAgentRunner.ipa Payload/
 
-      - name: Upload IPA
-        uses: actions/upload-artifact@v4
-        with:
-          name: WebDriverAgentRunner-IPA
-          path: WebDriverAgentRunner.ipa
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: WebDriverAgent-Fixed-IPA  # ここからダウンロード可能になります
+        path: WebDriverAgentRunner.ipa
